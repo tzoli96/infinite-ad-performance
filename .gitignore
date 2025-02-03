@@ -1,0 +1,5 @@
+.idea
+backend/vendor/
+backend/storage/logs/laravel.log
+backend/.env
+backend/.env.testing

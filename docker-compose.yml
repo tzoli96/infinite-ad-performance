@@ -1,0 +1,77 @@
+x-variables: &defaults
+  BACKEND_CONTAINER_NAME: ${BACKEND_CONTAINER_NAME:-laravel-backend}
+  WEBSERVER_CONTAINER_NAME: ${WEBSERVER_CONTAINER_NAME:-laravel-webserver}
+  DB_CONTAINER_NAME: ${DB_CONTAINER_NAME:-postgres-db}
+  ADMINER_CONTAINER_NAME: ${ADMINER_CONTAINER_NAME:-adminer}
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: .docker/backend/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: ${BACKEND_CONTAINER_NAME}
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html:delegated
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-laravel}
+      DB_USERNAME: ${DB_USERNAME:-laravel}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+    entrypoint: ['sh', '/usr/local/bin/docker-entrypoint.sh']
+    depends_on:
+      - db
+      - webserver
+    networks:
+      - app-network
+  webserver:
+    build:
+      context: .
+      dockerfile: .docker/webserver/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: ${WEBSERVER_CONTAINER_NAME}
+    restart: unless-stopped
+    ports:
+      - "${WEBSERVER_PORT:-8000}:80"
+    volumes:
+      - ./backend:/var/www/html:delegated
+    networks:
+      - app-network
+  db:
+    image: postgres:latest
+    container_name: ${DB_CONTAINER_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-laravel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-laravel}
+    networks:
+      - app-network
+  adminer:
+    image: adminer:latest
+    container_name: ${ADMINER_CONTAINER_NAME}
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pgdata:
